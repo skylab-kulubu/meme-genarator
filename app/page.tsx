@@ -1,5 +1,7 @@
-import MemeGenerator from "@/meme-generator";
+"use client"
 
-export default function Home() {
-  return (<MemeGenerator /> );
+import MemeGenerator from "../meme-generator"
+
+export default function SyntheticV0PageForDeployment() {
+  return <MemeGenerator />
 }

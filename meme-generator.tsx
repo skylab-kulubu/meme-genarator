@@ -8,24 +8,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Download, Upload, GripHorizontal, Plus, Trash2, RotateCcw } from "lucide-react"
-import { getAddress } from "@chopinframework/next";
-import MemeNFT from "./components/memenft"
- 
-const POPULAR_MEMES = [
-  {
-    name: "Drake",
-    url: "/placeholder.svg?height=400&width=400",
-  },
-  {
-    name: "Distracted Boyfriend",
-    url: "/placeholder.svg?height=400&width=400",
-  },
-  {
-    name: "Two Buttons",
-    url: "/placeholder.svg?height=400&width=400",
-  },
-]
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { Download, Upload, GripHorizontal, Plus, Trash2, RotateCcw, Star, ImageIcon } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MoreVertical } from "lucide-react"
 
 interface TextElement {
   id: string
@@ -33,19 +27,48 @@ interface TextElement {
   x: number
   y: number
   rotation: number
+  fontSize: number
+  color: string
+}
+
+interface MemeTemplate {
+  id: string
+  name: string
+  url: string
+  thumbnail?: string
 }
 
 export default function MemeGenerator() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [image, setImage] = useState<HTMLImageElement | null>(null)
-  const [fontSize, setFontSize] = useState(40)
-  const [textColor, setTextColor] = useState("#ffffff")
   const [textElements, setTextElements] = useState<TextElement[]>([])
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [isRotating, setIsRotating] = useState<string | null>(null)
   const [scale, setScale] = useState(1)
   const lastMousePos = useRef<{ x: number; y: number } | null>(null)
+  const [popularMemes, setPopularMemes] = useState<MemeTemplate[]>(() => {
+    const saved = localStorage.getItem("popularMemes")
+    return saved
+      ? JSON.parse(saved)
+      : [
+          {
+            id: "1",
+            name: "Drake",
+            url: "/placeholder.svg?height=400&width=400",
+          },
+          {
+            id: "2",
+            name: "Distracted Boyfriend",
+            url: "/placeholder.svg?height=400&width=400",
+          },
+          {
+            id: "3",
+            name: "Two Buttons",
+            url: "/placeholder.svg?height=400&width=400",
+          },
+        ]
+  })
 
   const addNewText = () => {
     const newElement: TextElement = {
@@ -54,6 +77,8 @@ export default function MemeGenerator() {
       x: image ? image.width / 2 : 200,
       y: image ? image.height / 2 : 200,
       rotation: 0,
+      fontSize: 40,
+      color: "#ffffff",
     }
     setTextElements((prev) => [...prev, newElement])
   }
@@ -62,8 +87,32 @@ export default function MemeGenerator() {
     setTextElements((prev) => prev.filter((el) => el.id !== id))
   }
 
-  const updateText = (id: string, text: string) => {
-    setTextElements((prev) => prev.map((el) => (el.id === id ? { ...el, text: text.toUpperCase() } : el)))
+  const updateText = (id: string, updates: Partial<TextElement>) => {
+    setTextElements((prev) => prev.map((el) => (el.id === id ? { ...el, ...updates } : el)))
+  }
+
+  const saveAsTemplate = () => {
+    if (!image) return
+
+    const newTemplate: MemeTemplate = {
+      id: Date.now().toString(),
+      name: `Template ${popularMemes.length + 1}`,
+      url: image.src,
+    }
+
+    setPopularMemes((prev) => {
+      const updated = [...prev, newTemplate]
+      localStorage.setItem("popularMemes", JSON.stringify(updated))
+      return updated
+    })
+  }
+
+  const removeTemplate = (id: string) => {
+    setPopularMemes((prev) => {
+      const updated = prev.filter((template) => template.id !== id)
+      localStorage.setItem("popularMemes", JSON.stringify(updated))
+      return updated
+    })
   }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,6 +133,8 @@ export default function MemeGenerator() {
               x: img.width / 2,
               y: 50,
               rotation: 0,
+              fontSize: 40,
+              color: "#ffffff",
             },
             {
               id: "text-2",
@@ -91,6 +142,8 @@ export default function MemeGenerator() {
               x: img.width / 2,
               y: img.height - 50,
               rotation: 0,
+              fontSize: 40,
+              color: "#ffffff",
             },
           ])
         }
@@ -112,6 +165,8 @@ export default function MemeGenerator() {
           x: img.width / 2,
           y: 50,
           rotation: 0,
+          fontSize: 40,
+          color: "#ffffff",
         },
         {
           id: "text-2",
@@ -119,6 +174,8 @@ export default function MemeGenerator() {
           x: img.width / 2,
           y: img.height - 50,
           rotation: 0,
+          fontSize: 40,
+          color: "#ffffff",
         },
       ])
     }
@@ -160,11 +217,11 @@ export default function MemeGenerator() {
       ctx.rotate((element.rotation * Math.PI) / 180)
 
       // Configure text style
-      ctx.fillStyle = textColor
+      ctx.fillStyle = element.color
       ctx.strokeStyle = "black"
-      ctx.lineWidth = fontSize / 8
+      ctx.lineWidth = element.fontSize / 8
       ctx.textAlign = "center"
-      ctx.font = `bold ${fontSize}px Impact`
+      ctx.font = `bold ${element.fontSize}px Impact`
 
       // Draw the text
       ctx.strokeText(element.text, 0, 0)
@@ -173,7 +230,7 @@ export default function MemeGenerator() {
       // Restore the context state
       ctx.restore()
     })
-  }, [image, textElements, fontSize, textColor])
+  }, [image, textElements])
 
   const handleDragStart = (event: React.MouseEvent | React.TouchEvent, id: string) => {
     event.preventDefault()
@@ -297,128 +354,193 @@ export default function MemeGenerator() {
   }, [draggedItem, isRotating, handleDrag, handleDragEnd])
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Meme Generator</CardTitle>
-          <CardDescription>
-            Upload an image or select a template. Add text, drag to position, and rotate!
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-6">
-          <div className="grid gap-4">
-            <div className="flex flex-wrap gap-4">
-              {POPULAR_MEMES.map((meme) => (
-                <Button key={meme.name} variant="outline" onClick={() => selectTemplate(meme.url)}>
+    <div className="flex flex-col min-h-screen">
+      <div className="sticky top-0 z-10 border-b bg-background">
+        <ScrollArea className="w-full whitespace-nowrap">
+          <div className="flex w-max space-x-4 p-4">
+            {popularMemes.map((meme) => (
+              <div key={meme.id} className="flex items-center gap-2">
+                <Button variant="outline" className="flex-shrink-0" onClick={() => selectTemplate(meme.url)}>
+                  <ImageIcon className="w-4 h-4 mr-2" />
                   {meme.name}
                 </Button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-4">
-              <Input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="image-upload" />
-              <Label htmlFor="image-upload" className="flex items-center gap-2 cursor-pointer">
-                <Button variant="outline" asChild>
-                  <span>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Image
-                  </span>
-                </Button>
-              </Label>
-            </div>
-          </div>
-
-          <div className="grid gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Text Elements</h3>
-              <Button onClick={addNewText} variant="outline" size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Text
-              </Button>
-            </div>
-
-            {textElements.map((element, index) => (
-              <div key={element.id} className="grid gap-2 p-4 border rounded-lg">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor={`text-${element.id}`}>Text {index + 1}</Label>
-                  <Button variant="ghost" size="sm" onClick={() => removeText(element.id)} className="text-destructive">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-                <Input
-                  id={`text-${element.id}`}
-                  value={element.text}
-                  onChange={(e) => updateText(element.id, e.target.value)}
-                  placeholder="Enter text"
-                />
+                {/* Only show delete option for custom templates */}
+                {Number(meme.id) > 3 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem className="text-destructive" onClick={() => removeTemplate(meme.id)}>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Template
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             ))}
-
-            <div className="grid gap-2">
-              <Label>Font Size</Label>
-              <Slider value={[fontSize]} onValueChange={(value) => setFontSize(value[0])} min={20} max={80} step={1} />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="text-color">Text Color</Label>
-              <Input
-                type="color"
-                id="text-color"
-                value={textColor}
-                onChange={(e) => setTextColor(e.target.value)}
-                className="w-20 h-10"
-              />
-            </div>
           </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </div>
 
-          <div className="flex flex-col items-center gap-4">
-            <div
-              ref={containerRef}
-              className="relative border rounded-lg overflow-hidden"
-              style={{ touchAction: draggedItem || isRotating ? "none" : "auto" }}
-            >
-              <canvas ref={canvasRef} className="max-w-full h-auto" />
-              {image &&
-                textElements.map((element) => (
-                  <div
-                    key={element.id}
-                    className="absolute"
-                    style={{
-                      left: `${element.x * scale}px`,
-                      top: `${element.y * scale}px`,
-                      transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
-                    }}
-                  >
-                    <div
-                      className="cursor-move flex items-center gap-2 select-none touch-none"
-                      onMouseDown={(e) => handleDragStart(e, element.id)}
-                      onTouchStart={(e) => handleDragStart(e, element.id)}
-                    >
-                      <GripHorizontal className="w-4 h-4 text-white drop-shadow-lg" />
+      <div className="flex-1 flex gap-6 p-4">
+        <div className="flex-1 max-w-4xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meme Generator</CardTitle>
+              <CardDescription>
+                Upload an image or select a template. Add text, drag to position, and rotate!
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+              <div className="flex items-center gap-4">
+                <Input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="image-upload" />
+                <Label htmlFor="image-upload" className="flex items-center gap-2 cursor-pointer">
+                  <Button variant="outline" asChild>
+                    <span>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload Image
+                    </span>
+                  </Button>
+                </Label>
+                {image && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">
+                        <Star className="w-4 h-4 mr-2" />
+                        Save as Template
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Save as Template</DialogTitle>
+                        <DialogDescription>Add this image to your templates for quick access.</DialogDescription>
+                      </DialogHeader>
+                      <Button onClick={saveAsTemplate}>Save Template</Button>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Text Elements</h3>
+                  <Button onClick={addNewText} variant="outline" size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Text
+                  </Button>
+                </div>
+
+                {textElements.map((element, index) => (
+                  <div key={element.id} className="grid gap-4 p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor={`text-${element.id}`}>Text {index + 1}</Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeText(element.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <div
-                      className="absolute left-full ml-2 cursor-pointer"
-                      onMouseDown={(e) => handleRotateStart(e, element.id)}
-                      onTouchStart={(e) => handleRotateStart(e, element.id)}
-                    >
-                      <RotateCcw className="w-4 h-4 text-white drop-shadow-lg" />
+                    <Input
+                      id={`text-${element.id}`}
+                      value={element.text}
+                      onChange={(e) => updateText(element.id, { text: e.target.value.toUpperCase() })}
+                      placeholder="Enter text"
+                    />
+
+                    <div className="grid gap-2">
+                      <Label>Font Size</Label>
+                      <Slider
+                        value={[element.fontSize]}
+                        onValueChange={(value) => updateText(element.id, { fontSize: value[0] })}
+                        min={20}
+                        max={80}
+                        step={1}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor={`color-${element.id}`}>Text Color</Label>
+                      <Input
+                        type="color"
+                        id={`color-${element.id}`}
+                        value={element.color}
+                        onChange={(e) => updateText(element.id, { color: e.target.value })}
+                        className="w-20 h-10"
+                      />
                     </div>
                   </div>
                 ))}
-            </div>
+              </div>
 
-            <Button onClick={downloadMeme} disabled={!image} className="w-full sm:w-auto">
-              <Download className="w-4 h-4 mr-2" />
-              Download Meme
-            </Button>
-            <Button onClick={downloadMeme} disabled={!image} className="w-full sm:w-auto">
-              <Download className="w-4 h-4 mr-2" />
-              Download Meme
-            </Button>
-            <MemeNFT memeUrl={""} />
+              <div className="flex flex-col items-center gap-4">
+                <div
+                  ref={containerRef}
+                  className="relative border rounded-lg overflow-hidden"
+                  style={{ touchAction: draggedItem || isRotating ? "none" : "auto" }}
+                >
+                  <canvas ref={canvasRef} className="max-w-full h-auto" />
+                  {image &&
+                    textElements.map((element) => (
+                      <div
+                        key={element.id}
+                        className="absolute"
+                        style={{
+                          left: `${element.x * scale}px`,
+                          top: `${element.y * scale}px`,
+                          transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
+                        }}
+                      >
+                        <div
+                          className="cursor-move flex items-center gap-2 select-none touch-none"
+                          onMouseDown={(e) => handleDragStart(e, element.id)}
+                          onTouchStart={(e) => handleDragStart(e, element.id)}
+                        >
+                          <GripHorizontal className="w-4 h-4 text-white drop-shadow-lg" />
+                        </div>
+                        <div
+                          className="absolute left-full ml-2 cursor-pointer"
+                          onMouseDown={(e) => handleRotateStart(e, element.id)}
+                          onTouchStart={(e) => handleRotateStart(e, element.id)}
+                        >
+                          <RotateCcw className="w-4 h-4 text-white drop-shadow-lg" />
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                <Button onClick={downloadMeme} disabled={!image} className="w-full sm:w-auto">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Meme
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Advertisement Section */}
+        <div className="hidden xl:block w-80 shrink-0">
+          <div className="sticky top-20">
+            <Card>
+              <CardHeader>
+                <CardTitle>Advertisement</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="aspect-[300/600] bg-muted rounded-lg flex items-center justify-center text-muted-foreground">
+                  <p className="text-sm">Ad Space (300x600)</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
