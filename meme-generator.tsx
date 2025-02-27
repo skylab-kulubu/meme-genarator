@@ -20,6 +20,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Download, Upload, GripHorizontal, Plus, Trash2, RotateCcw, Star, ImageIcon } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MoreVertical } from "lucide-react"
+import AuthButton from "./components/auth-button"
 
 interface TextElement {
   id: string
@@ -358,6 +359,7 @@ export default function MemeGenerator() {
       <div className="sticky top-0 z-10 border-b bg-background">
         <ScrollArea className="w-full whitespace-nowrap">
           <div className="flex w-max space-x-4 p-4">
+           
             {popularMemes.map((meme) => (
               <div key={meme.id} className="flex items-center gap-2">
                 <Button variant="outline" className="flex-shrink-0" onClick={() => selectTemplate(meme.url)}>
@@ -381,9 +383,13 @@ export default function MemeGenerator() {
                   </DropdownMenu>
                 )}
               </div>
+              
             ))}
+             <AuthButton />
           </div>
+          
           <ScrollBar orientation="horizontal" />
+          
         </ScrollArea>
       </div>
 
