@@ -10,6 +10,7 @@ import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Download, Upload, GripHorizontal, Plus, Trash2, RotateCcw } from "lucide-react"
 import { getAddress } from "@chopinframework/next";
+import MemeNFT from "./components/memenft"
  
 const POPULAR_MEMES = [
   {
@@ -414,6 +415,7 @@ export default function MemeGenerator() {
               <Download className="w-4 h-4 mr-2" />
               Download Meme
             </Button>
+            <MemeNFT memeUrl={""} />
           </div>
         </CardContent>
       </Card>
