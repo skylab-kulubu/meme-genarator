@@ -23,7 +23,7 @@ Mimic brings together creativity and blockchain technology by offering:
 - **Blockchain:** Chopin Framework for managing NFT minting, transfers, and wallet integrations
 - **Database:** Neon PostgreSQL for storing NFT and collection metadata
 - **Storage:** IPFS for decentralized storage of meme assets and metadata
-- **AI (Upcoming):** OpenAI API for enhanced meme generation suggestions
+
 
 ## 📥 Installation & Setup
 
@@ -80,10 +80,10 @@ Mimic simplifies NFT operations by using the Chopin Framework, which removes the
 
 ## 📜 Future Enhancements
 
-- **Enhanced Meme Editor:** Incorporate advanced editing tools and AI-powered suggestions.
+
 - **Marketplace Improvements:** Roll out auction features and improved NFT trading capabilities.
 - **Community Challenges:** Launch community-driven meme contests and reward top creators.
-- **Expanded AI Integration:** Deepen AI capabilities for dynamic meme generation and personalized content.
+
 
 ---
 
