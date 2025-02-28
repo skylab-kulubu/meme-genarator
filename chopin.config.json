@@ -1,4 +1,5 @@
 {
+  "version": "0.1.0",
   "command": "npm run dev",
   "proxyPort": 4000,
   "targetPort": 3000

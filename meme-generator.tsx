@@ -17,10 +17,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
-import { Download, Upload, GripHorizontal, Plus, Trash2, RotateCcw, Star, ImageIcon } from "lucide-react"
+import { Download, Upload, GripHorizontal, Plus, Trash2, RotateCcw, Star, ImageIcon, Coins } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MoreVertical } from "lucide-react"
-import AuthButton from "./components/auth-button"
+import { ProfileDialog } from "./profile-dialog"
+import { SaveDialog } from "./save-dialog"
+import { MintNFTDialog } from "./mint-nft-dialog"
+import { NFTGallery } from "./nft-gallery"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { SavedMeme } from "./types"
+import { useToast } from "@/components/ui/use-toast"
 
 interface TextElement {
   id: string
@@ -70,6 +76,15 @@ export default function MemeGenerator() {
           },
         ]
   })
+  const [savedMemes, setSavedMemes] = useState<SavedMeme[]>(() => {
+    const saved = localStorage.getItem("savedMemes")
+    return saved ? JSON.parse(saved) : []
+  })
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
+  const [mintDialogOpen, setMintDialogOpen] = useState(false)
+  const [currentMemeDataUrl, setCurrentMemeDataUrl] = useState<string>("")
+  const [currentMemeName, setCurrentMemeName] = useState<string>("My Awesome Meme")
+  const { toast } = useToast()
 
   const addNewText = () => {
     const newElement: TextElement = {
@@ -231,6 +246,9 @@ export default function MemeGenerator() {
       // Restore the context state
       ctx.restore()
     })
+
+    // Update the current meme data URL
+    setCurrentMemeDataUrl(canvas.toDataURL("image/png"))
   }, [image, textElements])
 
   const handleDragStart = (event: React.MouseEvent | React.TouchEvent, id: string) => {
@@ -329,6 +347,19 @@ export default function MemeGenerator() {
     link.click()
   }
 
+  const handleMintNFT = () => {
+    if (!image) {
+      toast({
+        title: "Error",
+        description: "Please create a meme first before minting as NFT",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setMintDialogOpen(true)
+  }
+
   useEffect(() => {
     drawMeme()
   }, [drawMeme])
@@ -354,181 +385,247 @@ export default function MemeGenerator() {
     }
   }, [draggedItem, isRotating, handleDrag, handleDragEnd])
 
+  const saveMemeToProfile = (name: string) => {
+    const canvas = canvasRef.current
+    if (!canvas || !image) return
+
+    setCurrentMemeName(name)
+
+    const newMeme: SavedMeme = {
+      id: Date.now().toString(),
+      name,
+      imageUrl: canvas.toDataURL("image/png"),
+      textElements: [...textElements],
+      createdAt: new Date().toISOString(),
+    }
+
+    setSavedMemes((prev) => {
+      const updated = [...prev, newMeme]
+      localStorage.setItem("savedMemes", JSON.stringify(updated))
+      return updated
+    })
+  }
+
+  // Add this function to delete memes from profile
+  const deleteMeme = (id: string) => {
+    setSavedMemes((prev) => {
+      const updated = prev.filter((meme) => meme.id !== id)
+      localStorage.setItem("savedMemes", JSON.stringify(updated))
+      return updated
+    })
+  }
+
+  // Add this function to download memes from profile
+  const downloadSavedMeme = (meme: SavedMeme) => {
+    const link = document.createElement("a")
+    link.download = `${meme.name}.png`
+    link.href = meme.imageUrl
+    link.click()
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <div className="sticky top-0 z-10 border-b bg-background">
-        <ScrollArea className="w-full whitespace-nowrap">
-          <div className="flex w-max space-x-4 p-4">
-           
-            {popularMemes.map((meme) => (
-              <div key={meme.id} className="flex items-center gap-2">
-                <Button variant="outline" className="flex-shrink-0" onClick={() => selectTemplate(meme.url)}>
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  {meme.name}
-                </Button>
-                {/* Only show delete option for custom templates */}
-                {Number(meme.id) > 3 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem className="text-destructive" onClick={() => removeTemplate(meme.id)}>
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Template
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-              
-            ))}
-             <AuthButton />
+        <div className="flex items-center justify-between px-4">
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex w-max space-x-4 p-4">
+              {popularMemes.map((meme) => (
+                <div key={meme.id} className="flex items-center gap-2">
+                  <Button variant="outline" className="flex-shrink-0" onClick={() => selectTemplate(meme.url)}>
+                    <ImageIcon className="w-4 h-4 mr-2" />
+                    {meme.name}
+                  </Button>
+                  {/* Only show delete option for custom templates */}
+                  {Number(meme.id) > 3 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="text-destructive" onClick={() => removeTemplate(meme.id)}>
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Template
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+          <div className="flex items-center gap-2 pl-4 border-l">
+            <ProfileDialog savedMemes={savedMemes} onDeleteMeme={deleteMeme} onDownloadMeme={downloadSavedMeme} />
           </div>
-          
-          <ScrollBar orientation="horizontal" />
-          
-        </ScrollArea>
+        </div>
       </div>
 
       <div className="flex-1 flex gap-6 p-4">
         <div className="flex-1 max-w-4xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle>Meme Generator</CardTitle>
-              <CardDescription>
-                Upload an image or select a template. Add text, drag to position, and rotate!
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-6">
-              <div className="flex items-center gap-4">
-                <Input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="image-upload" />
-                <Label htmlFor="image-upload" className="flex items-center gap-2 cursor-pointer">
-                  <Button variant="outline" asChild>
-                    <span>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload Image
-                    </span>
-                  </Button>
-                </Label>
-                {image && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline">
-                        <Star className="w-4 h-4 mr-2" />
-                        Save as Template
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Save as Template</DialogTitle>
-                        <DialogDescription>Add this image to your templates for quick access.</DialogDescription>
-                      </DialogHeader>
-                      <Button onClick={saveAsTemplate}>Save Template</Button>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
+          <Tabs defaultValue="editor">
+            <TabsList className="mb-4">
+              <TabsTrigger value="editor">Meme Editor</TabsTrigger>
+              <TabsTrigger value="nfts">NFT Gallery</TabsTrigger>
+            </TabsList>
 
-              <div className="grid gap-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Text Elements</h3>
-                  <Button onClick={addNewText} variant="outline" size="sm">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Text
-                  </Button>
-                </div>
-
-                {textElements.map((element, index) => (
-                  <div key={element.id} className="grid gap-4 p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor={`text-${element.id}`}>Text {index + 1}</Label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeText(element.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+            <TabsContent value="editor">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Meme Generator</CardTitle>
+                  <CardDescription>
+                    Upload an image or select a template. Add text, drag to position, and rotate!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-6">
+                  <div className="flex items-center gap-4 flex-wrap">
                     <Input
-                      id={`text-${element.id}`}
-                      value={element.text}
-                      onChange={(e) => updateText(element.id, { text: e.target.value.toUpperCase() })}
-                      placeholder="Enter text"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="image-upload"
                     />
-
-                    <div className="grid gap-2">
-                      <Label>Font Size</Label>
-                      <Slider
-                        value={[element.fontSize]}
-                        onValueChange={(value) => updateText(element.id, { fontSize: value[0] })}
-                        min={20}
-                        max={80}
-                        step={1}
-                      />
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor={`color-${element.id}`}>Text Color</Label>
-                      <Input
-                        type="color"
-                        id={`color-${element.id}`}
-                        value={element.color}
-                        onChange={(e) => updateText(element.id, { color: e.target.value })}
-                        className="w-20 h-10"
-                      />
-                    </div>
+                    <Label htmlFor="image-upload" className="flex items-center gap-2 cursor-pointer">
+                      <Button variant="outline" asChild>
+                        <span>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Image
+                        </span>
+                      </Button>
+                    </Label>
+                    {image && (
+                      <>
+                        <Button variant="outline" onClick={() => setSaveDialogOpen(true)}>
+                          Save to Profile
+                        </Button>
+                        <Button variant="outline" onClick={handleMintNFT}>
+                          <Coins className="w-4 h-4 mr-2" />
+                          Mint as NFT
+                        </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline">
+                              <Star className="w-4 h-4 mr-2" />
+                              Save as Template
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Save as Template</DialogTitle>
+                              <DialogDescription>Add this image to your templates for quick access.</DialogDescription>
+                            </DialogHeader>
+                            <Button onClick={saveAsTemplate}>Save Template</Button>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    )}
                   </div>
-                ))}
-              </div>
 
-              <div className="flex flex-col items-center gap-4">
-                <div
-                  ref={containerRef}
-                  className="relative border rounded-lg overflow-hidden"
-                  style={{ touchAction: draggedItem || isRotating ? "none" : "auto" }}
-                >
-                  <canvas ref={canvasRef} className="max-w-full h-auto" />
-                  {image &&
-                    textElements.map((element) => (
-                      <div
-                        key={element.id}
-                        className="absolute"
-                        style={{
-                          left: `${element.x * scale}px`,
-                          top: `${element.y * scale}px`,
-                          transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
-                        }}
-                      >
-                        <div
-                          className="cursor-move flex items-center gap-2 select-none touch-none"
-                          onMouseDown={(e) => handleDragStart(e, element.id)}
-                          onTouchStart={(e) => handleDragStart(e, element.id)}
-                        >
-                          <GripHorizontal className="w-4 h-4 text-white drop-shadow-lg" />
+                  <div className="grid gap-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">Text Elements</h3>
+                      <Button onClick={addNewText} variant="outline" size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Text
+                      </Button>
+                    </div>
+
+                    {textElements.map((element, index) => (
+                      <div key={element.id} className="grid gap-4 p-4 border rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor={`text-${element.id}`}>Text {index + 1}</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeText(element.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <div
-                          className="absolute left-full ml-2 cursor-pointer"
-                          onMouseDown={(e) => handleRotateStart(e, element.id)}
-                          onTouchStart={(e) => handleRotateStart(e, element.id)}
-                        >
-                          <RotateCcw className="w-4 h-4 text-white drop-shadow-lg" />
+                        <Input
+                          id={`text-${element.id}`}
+                          value={element.text}
+                          onChange={(e) => updateText(element.id, { text: e.target.value.toUpperCase() })}
+                          placeholder="Enter text"
+                        />
+
+                        <div className="grid gap-2">
+                          <Label>Font Size</Label>
+                          <Slider
+                            value={[element.fontSize]}
+                            onValueChange={(value) => updateText(element.id, { fontSize: value[0] })}
+                            min={20}
+                            max={80}
+                            step={1}
+                          />
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label htmlFor={`color-${element.id}`}>Text Color</Label>
+                          <Input
+                            type="color"
+                            id={`color-${element.id}`}
+                            value={element.color}
+                            onChange={(e) => updateText(element.id, { color: e.target.value })}
+                            className="w-20 h-10"
+                          />
                         </div>
                       </div>
                     ))}
-                </div>
+                  </div>
 
-                <Button onClick={downloadMeme} disabled={!image} className="w-full sm:w-auto">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Meme
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="flex flex-col items-center gap-4">
+                    <div
+                      ref={containerRef}
+                      className="relative border rounded-lg overflow-hidden"
+                      style={{ touchAction: draggedItem || isRotating ? "none" : "auto" }}
+                    >
+                      <canvas ref={canvasRef} className="max-w-full h-auto" />
+                      {image &&
+                        textElements.map((element) => (
+                          <div
+                            key={element.id}
+                            className="absolute"
+                            style={{
+                              left: `${element.x * scale}px`,
+                              top: `${element.y * scale}px`,
+                              transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
+                            }}
+                          >
+                            <div
+                              className="cursor-move flex items-center gap-2 select-none touch-none"
+                              onMouseDown={(e) => handleDragStart(e, element.id)}
+                              onTouchStart={(e) => handleDragStart(e, element.id)}
+                            >
+                              <GripHorizontal className="w-4 h-4 text-white drop-shadow-lg" />
+                            </div>
+                            <div
+                              className="absolute left-full ml-2 cursor-pointer"
+                              onMouseDown={(e) => handleRotateStart(e, element.id)}
+                              onTouchStart={(e) => handleRotateStart(e, element.id)}
+                            >
+                              <RotateCcw className="w-4 h-4 text-white drop-shadow-lg" />
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+
+                    <Button onClick={downloadMeme} disabled={!image} className="w-full sm:w-auto">
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Meme
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="nfts">
+              <NFTGallery />
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Advertisement Section */}
@@ -547,6 +644,15 @@ export default function MemeGenerator() {
           </div>
         </div>
       </div>
+
+      <SaveDialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen} onSave={saveMemeToProfile} />
+      <MintNFTDialog
+        open={mintDialogOpen}
+        onOpenChange={setMintDialogOpen}
+        memeImageUrl={currentMemeDataUrl}
+        memeName={currentMemeName}
+        textElements={textElements}
+      />
     </div>
   )
 }
