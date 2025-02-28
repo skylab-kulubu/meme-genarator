@@ -473,7 +473,7 @@ export default function MemeGenerator() {
             <TabsContent value="editor">
               <Card>
                 <CardHeader>
-                  <CardTitle>Meme Generator</CardTitle>
+                  <CardTitle>Mimic</CardTitle>
                   <CardDescription>
                     Upload an image or select a template. Add text, drag to position, and rotate!
                   </CardDescription>
