@@ -36,8 +36,8 @@ Mimic brings together creativity and blockchain technology by offering:
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/skylab-kulubu/mimic.git
-cd mimic
+git clone https://github.com/skylab-kulubu/meme-genarator.git
+cd meme-genarator
 ```
 
 ### Install Dependencies
